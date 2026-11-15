@@ -1,0 +1,13 @@
+graph TD
+    A[Inicio - Llamada entrante] --> B[agente_llamada: recibir]
+    B --> C[agente_llamada: procesar y validar datos]
+    C --> D{¿Requiere cotizacion o plan?}
+    D -- Sí --> E[agente_respuesta: recibir]
+    D -- No --> F[agente_llamada: responder - contencion y cierre de llamada]
+    E --> G[agente_respuesta: procesar - empatia y analisis comercial]
+    G --> H[agente_respuesta: responder - cotizacion y plan]
+    H --> I[Fin - decisión comercial o seguimiento]
+
+    style A fill:#e1f5e1,stroke:#2e7d32
+    style E fill:#fff3e0,stroke:#ef6c00
+    style H fill:#e3f2fd,stroke:#1565c0

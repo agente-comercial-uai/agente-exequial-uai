@@ -1,0 +1,37 @@
+# ============================================================================
+# .gitignore — Proyecto Agente Conversacional Exequial
+# ============================================================================
+
+# Variables de entorno y secretos (NUNCA subirlos)
+.env
+.env.local
+.env.development
+.env.production
+
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# Cachés y compilación de Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Cachés de herramientas
+.pytest_cache/
+.langgraph_api/
+.ipynb_checkpoints/
+
+# Datos locales y bases de datos
+*.db
+*.sqlite
+*.sqlite3
+data/
+logs/
+
+# Archivos temporales del sistema
+Thumbs.db
+Desktop.ini
+*.tmp

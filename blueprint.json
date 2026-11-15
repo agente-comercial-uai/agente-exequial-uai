@@ -1,0 +1,39 @@
+{
+  "proyecto": "proyecto-2-agentes-comerciales-exequial",
+  "version": "1.0.0",
+  "sector": "exequial",
+  "descripcion": "Dos agentes: recepcion de llamada 24/7 y respuesta comercial sensible/empatica.",
+  "agentes": [
+    {
+      "nombre": "agente_llamada",
+      "rol": "recepcion y triage de llamadas",
+      "funciones": [
+        "recopilar datos del solicitante",
+        "validar urgencia",
+        "contencion emocional inicial",
+        "transferir a agente_respuesta si requiere cotizacion o plan"
+      ]
+    },
+    {
+      "nombre": "agente_respuesta",
+      "rol": "respuesta comercial sensible y empatica",
+      "funciones": [
+        "atender con empatia, respeto y escucha activa",
+        "presentar planes funerarios (Honor Integral, Paz Tradicional, Cremación Dignidad)",
+        "cotizar precios y facilidades de pago con transparencia",
+        "persuadir con vision prospectiva y guiar decision comercial",
+        "nunca inventar datos; indicar con franqueza lo que no se sabe"
+      ]
+    }
+  ],
+  "flujo": ["recibir", "procesar", "responder"],
+  "cache": {
+    "backend_primario": "redis",
+    "backend_fallback": "memoria",
+    "ttl_segundos": 3600
+  },
+  "fallback": {
+    "modo_simulacion_sin_api_key": true,
+    "respuesta_texto_ante_fallo_api": true
+  }
+}
