@@ -172,6 +172,7 @@ async def telegram_webhook(
                     json={
                         "chat_id": chat_id,
                         "text": respuesta,
+                        "parse_mode": "Markdown",
                     },
                 )
         except Exception:  # noqa: BLE001

@@ -53,7 +53,14 @@ def _obtener_modelo():
     if api_key:
         from langchain_google_genai import ChatGoogleGenerativeAI
 
-        return ChatGoogleGenerativeAI(model=modelo, google_api_key=api_key)
+        # Nota: gemini-3.5-flash-lite usa valores de muestreo fijos y
+        # descarta `temperature`. Solo limitamos la salida para acortar la
+        # latencia y forzar respuestas concisas.
+        return ChatGoogleGenerativeAI(
+            model=modelo,
+            google_api_key=api_key,
+            max_output_tokens=400,
+        )
 
     class _ModeloSimulado:
         def __init__(self, nombre: str):
@@ -75,6 +82,24 @@ def _obtener_modelo():
             )
 
     return _ModeloSimulado(modelo)
+
+
+# ---------------------------------------------------------------------------
+# Normalización de texto: minúsculas y sin tildes, para que las listas de
+# palabras clave coincidan sin importar cómo los escriba el usuario.
+# ---------------------------------------------------------------------------
+
+def _normalizar(texto: str) -> str:
+    """Devuelve el texto en minúsculas y sin tildes.
+
+    Usa la forma NFKD de Unicode, que separa la letra de su acento, y
+    descarta los caracteres combinantes. Así "previsión" y "prevision"
+    coinciden, y "ñ" se convierte en "n".
+    """
+    import unicodedata
+
+    base = unicodedata.normalize("NFKD", texto.lower())
+    return "".join(c for c in base if not unicodedata.combining(c))
 
 
 # ---------------------------------------------------------------------------
@@ -102,18 +127,18 @@ PALABRAS_URGENCIA = [
 
 PALABRAS_FUTURO = [
     "plan",
-    "previsión",
     "prevision",
     "futuro",
     "cotiz",
-    "cotización",
     "precio",
     "plan funerario",
     "sepultura futura",
-    "cremación futura",
+    "cremacion futura",
     "contratar",
     "planear",
-    "planificación",
+    "planificacion",
+    "prevenir",
+    "anticipad",
 ]
 
 PALABRAS_POSTVENTA = [
@@ -121,14 +146,20 @@ PALABRAS_POSTVENTA = [
     "queja",
     "seguimiento",
     "contratado",
-    "ya contraté",
+    "ya contrate",
     "mi servicio",
-    "póliza",
+    "poliza",
     "siniestro",
     "beneficiario",
     "reembolso",
-    "atención postventa",
+    "atencion postventa",
     "problema con el servicio",
+    "no me han entregado",
+    "no me entregaron",
+    "certificado",
+    "factura",
+    "servicio contratado",
+    "contrato",
 ]
 
 PALABRAS_HUMANA = [
@@ -137,7 +168,7 @@ PALABRAS_HUMANA = [
     "humano",
     "persona",
     "habl con un",
-    "atención humana",
+    "atencion humana",
     "asesor humano",
     "ejecutivo",
     "llamar",
@@ -150,7 +181,8 @@ def _clasificar_ruta(texto: str) -> tuple[str, str, bool]:
     Devuelve (ruta, motivo, derivacion_humana).
     No llama al modelo de lenguaje: cero costo de tokens para clasificación.
     """
-    t = texto.lower()
+    # Normaliza para que las palabras clave coincidan con o sin tildes.
+    t = _normalizar(texto)
     derivacion = any(p in t for p in PALABRAS_HUMANA)
 
     # Postventa / reclamos (prioridad: un reclamo sobre un velorio pasado es
