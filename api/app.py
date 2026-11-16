@@ -40,6 +40,27 @@ class ChatResponse(BaseModel):
     respuesta: str
 
 
+def _texto_de_mensajes(mensajes) -> str:
+    """Devuelve el último texto plano generado por el modelo.
+
+    Los mensajes de langchain-google-genai llegan como lista de bloques
+    ({"type": "text", "text": ...}); otros proveedores devuelven un string.
+    """
+    for m in reversed(mensajes):
+        contenido = getattr(m, "content", "") or ""
+        if isinstance(contenido, list):
+            texto = "".join(
+                bloque.get("text", "")
+                for bloque in contenido
+                if isinstance(bloque, dict) and bloque.get("type") == "text"
+            )
+            if texto.strip():
+                return texto
+        elif isinstance(contenido, str) and contenido.strip():
+            return contenido
+    return ""
+
+
 @app.get("/")
 def root():
     return {"mensaje": "API de agente exequial. POST /chat para enviar un mensaje."}
@@ -71,12 +92,7 @@ def chat(req: ChatRequest):
         motivo = estado_final.get("motivo", "")
 
         mensajes = estado_final.get("messages", [])
-        respuesta = ""
-        for m in reversed(mensajes):
-            contenido = getattr(m, "content", "") or ""
-            if contenido:
-                respuesta = contenido
-                break
+        respuesta = _texto_de_mensajes(mensajes)
 
         if not respuesta:
             respuesta = "No se pudo generar una respuesta. Intenta de nuevo."
@@ -140,12 +156,7 @@ async def telegram_webhook(
     estado_final = graph.invoke(estado_inicial)
 
     mensajes = estado_final.get("messages", [])
-    respuesta = ""
-    for m in reversed(mensajes):
-        contenido = getattr(m, "content", "") or ""
-        if contenido:
-            respuesta = contenido
-            break
+    respuesta = _texto_de_mensajes(mensajes)
 
     if not respuesta:
         respuesta = "Lo siento, no pude procesar tu mensaje en este momento."
