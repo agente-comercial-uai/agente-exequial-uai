@@ -170,6 +170,7 @@ PALABRAS_HUMANA = [
     "habl con un",
     "atencion humana",
     "asesor humano",
+    "asesor de servicios",
     "ejecutivo",
     "llamar",
 ]
