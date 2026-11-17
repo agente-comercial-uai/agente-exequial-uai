@@ -127,7 +127,7 @@ def nodo_procesar(state: Estado) -> Estado:
                 _guardar_contexto(state, nombre, str(resultado))
 
             respuesta_final = modelo.invoke(
-                mensajes + [SystemMessage(content=SYSTEM_PROMPT_RECEPCION_LLAMADA)]
+                [SystemMessage(content=SYSTEM_PROMPT_RECEPCION_LLAMADA)] + mensajes
             )
             return {
                 "messages": mensajes + [respuesta_final],
@@ -136,7 +136,7 @@ def nodo_procesar(state: Estado) -> Estado:
             }
 
     respuesta_final = modelo.invoke(
-        mensajes + [SystemMessage(content=SYSTEM_PROMPT_RECEPCION_LLAMADA)]
+        [SystemMessage(content=SYSTEM_PROMPT_RECEPCION_LLAMADA)] + mensajes
     )
     return {
         "messages": mensajes + [respuesta_final],
@@ -146,19 +146,14 @@ def nodo_procesar(state: Estado) -> Estado:
 
 
 def nodo_responder(state: Estado) -> Estado:
-    """Redacta la respuesta final de contención al solicitante."""
+    """Reutiliza la respuesta ya generada en 'procesar' sin volver a invocar
+    al modelo (evita el error de 'prefilling' de Gemini al enviar un mensaje
+    del asistente como último turno)."""
     saltos = list(state.get("saltos", []))
     saltos.append("responder")
 
-    mensajes = list(state.get("messages", []))
-    modelo = _obtener_modelo()
-
-    respuesta = modelo.invoke(
-        mensajes + [SystemMessage(content=SYSTEM_PROMPT_RECEPCION_LLAMADA)]
-    )
-
     return {
-        "messages": mensajes + [respuesta],
+        "messages": list(state.get("messages", [])),
         "saltos": saltos,
         "session_id": state.get("session_id", "default"),
     }

@@ -230,6 +230,22 @@ def _ultimo_texto(state) -> str:
     return getattr(mensajes[-1], "content", "") or ""
 
 
+def _invocar(modelo, sistema, mensajes):
+    """Invoca al modelo solo si hay texto del usuario; si no, devuelve una
+    respuesta fija. Evita enviar contenido vacío a Gemini ("contents are
+    required")."""
+    texto = ""
+    for m in reversed(mensajes):
+        if getattr(m, "type", "") == "human":
+            texto = getattr(m, "content", "") or ""
+            break
+    if not texto.strip():
+        return AIMessage(
+            content="Por favor, escribe tu consulta para poder atenderte."
+        )
+    return modelo.invoke([sistema] + mensajes)
+
+
 def nodo_router(state: Estado) -> Estado:
     """Clasifica la consulta del usuario en una de las 4 rutas del negocio.
 
@@ -265,7 +281,7 @@ def nodo_necesidad_inmediata(state: Estado) -> Estado:
     sistema = SystemMessage(content=SYSTEM_PROMPT_NECESIDAD_INMEDIATA)
     modelo = _obtener_modelo()
 
-    respuesta = modelo.invoke([sistema] + mensajes)
+    respuesta = _invocar(modelo, sistema, mensajes)
 
     return {
         "messages": mensajes + [respuesta],
@@ -286,7 +302,7 @@ def nodo_necesidad_futura(state: Estado) -> Estado:
     sistema = SystemMessage(content=SYSTEM_PROMPT_NECESIDAD_FUTURA)
     modelo = _obtener_modelo()
 
-    respuesta = modelo.invoke([sistema] + mensajes)
+    respuesta = _invocar(modelo, sistema, mensajes)
 
     return {
         "messages": mensajes + [respuesta],
@@ -307,7 +323,7 @@ def nodo_postventa(state: Estado) -> Estado:
     sistema = SystemMessage(content=SYSTEM_PROMPT_POSTVENTA)
     modelo = _obtener_modelo()
 
-    respuesta = modelo.invoke([sistema] + mensajes)
+    respuesta = _invocar(modelo, sistema, mensajes)
 
     return {
         "messages": mensajes + [respuesta],
@@ -328,7 +344,7 @@ def nodo_generica(state: Estado) -> Estado:
     sistema = SystemMessage(content=SYSTEM_PROMPT_GENERICA)
     modelo = _obtener_modelo()
 
-    respuesta = modelo.invoke([sistema] + mensajes)
+    respuesta = _invocar(modelo, sistema, mensajes)
 
     return {
         "messages": mensajes + [respuesta],
@@ -349,7 +365,7 @@ def nodo_derivacion_humana(state: Estado) -> Estado:
     sistema = SystemMessage(content=SYSTEM_PROMPT_DERIVACION_HUMANA)
     modelo = _obtener_modelo()
 
-    respuesta = modelo.invoke([sistema] + mensajes)
+    respuesta = _invocar(modelo, sistema, mensajes)
 
     return {
         "messages": mensajes + [respuesta],
