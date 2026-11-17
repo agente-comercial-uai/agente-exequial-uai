@@ -15,7 +15,10 @@ import httpx
 from fastapi import FastAPI, HTTPException, Request, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage
+
+load_dotenv()
 
 from src.agente_exequial.graph import graph
 
