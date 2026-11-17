@@ -49,13 +49,7 @@ def _ejecutar(nombre_agente: str, mensaje: str, mostrar_saltos: bool) -> Tuple[s
 
     saltos = list(estado_final.get("saltos", []))
     mensajes = estado_final.get("messages", [])
-
-    respuesta = ""
-    for m in reversed(mensajes):
-        contenido = getattr(m, "content", "") or ""
-        if contenido:
-            respuesta = contenido
-            break
+    respuesta = _texto_de_mensajes(mensajes)
 
     if mostrar_saltos:
         print("Saltos (nodos visitados):")
@@ -64,6 +58,27 @@ def _ejecutar(nombre_agente: str, mensaje: str, mostrar_saltos: bool) -> Tuple[s
         print()
 
     return respuesta, saltos
+
+
+def _texto_de_mensajes(mensajes) -> str:
+    """Devuelve el último texto plano generado por el modelo.
+
+    Los mensajes de langchain-google-genai llegan como lista de bloques
+    ({"type": "text", "text": ...}); otros proveedores devuelven un string.
+    """
+    for m in reversed(mensajes):
+        contenido = getattr(m, "content", "") or ""
+        if isinstance(contenido, list):
+            texto = "".join(
+                bloque.get("text", "")
+                for bloque in contenido
+                if isinstance(bloque, dict) and bloque.get("type") == "text"
+            )
+            if texto.strip():
+                return texto
+        elif isinstance(contenido, str) and contenido.strip():
+            return contenido
+    return ""
 
 
 def _diagrama(nombre_agente: str) -> str:
