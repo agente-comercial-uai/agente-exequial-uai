@@ -6,7 +6,9 @@ Levantar con:
 
 from __future__ import annotations
 
+import logging
 import os
+import time
 from typing import Optional
 
 import httpx
@@ -16,6 +18,12 @@ from pydantic import BaseModel
 from langchain_core.messages import HumanMessage
 
 from src.agente_exequial.graph import graph
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+)
+logger = logging.getLogger("agente-exequial")
 
 app = FastAPI(title="Agente Conversacional Exequial API", version="0.1.0")
 
@@ -61,6 +69,23 @@ def _texto_de_mensajes(mensajes) -> str:
     return ""
 
 
+def _requerir_token(authorization: Optional[str]) -> None:
+    """Valida el token de acceso de la API (Bearer <API_TOKEN>).
+
+    La clave vive en la variable de entorno API_TOKEN. Si está ausente o no
+    coincide, responde 401 y no procesa la petición.
+    """
+    esperado = os.getenv("API_TOKEN", "").strip()
+    if not esperado:
+        logger.error("API_TOKEN no configurada en el entorno")
+        raise HTTPException(status_code=503, detail="Servicio no configurado")
+
+    recibido = (authorization or "").strip()
+    if recibido != f"Bearer {esperado}":
+        logger.warning("acceso rechazado: token inválido o ausente")
+        raise HTTPException(status_code=401, detail="No autorizado")
+
+
 @app.get("/")
 def root():
     return {"mensaje": "API de agente exequial. POST /chat para enviar un mensaje."}
@@ -73,9 +98,18 @@ def health():
 
 
 @app.post("/chat", response_model=ChatResponse)
-def chat(req: ChatRequest):
+def chat(
+    req: ChatRequest,
+    authorization: Optional[str] = Header(None, alias="Authorization"),
+):
     """Recibe identificador de conversación y texto, invoca el grafo exequial
-    y devuelve la ruta, el motivo y la respuesta textual."""
+    y devuelve la ruta, el motivo y la respuesta textual.
+
+    Protegido por un token de acceso en la cabecera `Authorization: Bearer <API_TOKEN>`.
+    """
+    _requerir_token(authorization)
+
+    inicio = time.perf_counter()
     try:
         estado_inicial = {
             "messages": [HumanMessage(content=req.message)],
@@ -97,12 +131,29 @@ def chat(req: ChatRequest):
         if not respuesta:
             respuesta = "No se pudo generar una respuesta. Intenta de nuevo."
 
+        ms = (time.perf_counter() - inicio) * 1000
+        logger.info(
+            "petición | conversación=%s | ruta=%s | duración=%.1f ms | fallo=no",
+            req.conversation_id,
+            ruta,
+            ms,
+        )
+
         return ChatResponse(
             ruta=ruta,
             motivo=motivo,
             respuesta=respuesta,
         )
-    except Exception:  # noqa: BLE001
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        ms = (time.perf_counter() - inicio) * 1000
+        logger.error(
+            "petición | conversación=%s | duración=%.1f ms | fallo=sí | error=%s",
+            req.conversation_id,
+            ms,
+            type(exc).__name__,
+        )
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 

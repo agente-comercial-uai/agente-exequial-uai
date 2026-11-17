@@ -4,6 +4,19 @@ Agente conversacional para el sector exequial (funerario), con trato empático, 
 
 ---
 
+## Integrantes y aportes
+
+| Integrante | Aporte |
+|-----------|--------|
+| Leonardo Quezada | Verificación de reproducción en local y documentación de arranque |
+| José Vilches | Evidencias de acceso autorizado y rechazado |
+| José Vilches B | Preparación manual y límites conocidos del agente |
+| Alex Bravo | Código, seguridad (token) y README |
+
+**Opción elegida:** Servicio FastAPI (canal de uso = API `POST /chat` protegida), complementado con Telegram como canal de atención.
+
+---
+
 ## 1. Qué hace el proyecto
 
 El proyecto implementa un **router exequial** que clasifica las consultas entrantes en cuatro rutas de negocio y las gestiona con respuestas empáticas y éticas:
@@ -120,13 +133,29 @@ http://localhost:8000/docs
 ```
 
 ### Paso 4: Probar el endpoint POST /chat desde PowerShell
+
+El endpoint `/chat` exige el token de acceso. Envíalo en la cabecera `Authorization`:
 ```powershell
 $body = @{
     conversation_id = "prueba-001"
     message = "Mi familiar falleció en el hospital, necesito servicio funerario urgente."
 } | ConvertTo-Json
 
-Invoke-RestMethod -Uri "http://localhost:8000/chat" -Method Post -ContentType "application/json" -Body $body
+Invoke-RestMethod -Uri "http://localhost:8000/chat" -Method Post `
+  -Headers @{ Authorization = "Bearer TU_TOKEN_DE_PRUEBA" } `
+  -ContentType "application/json" -Body $body
+```
+
+**Prueba de acceso (autorizado vs rechazado):**
+```powershell
+# Sin token -> 401 No autorizado
+Invoke-RestMethod -Uri "http://localhost:8000/chat" -Method Post `
+  -ContentType "application/json" -Body $body
+
+# Con token -> 200 (respuesta real)
+Invoke-RestMethod -Uri "http://localhost:8000/chat" -Method Post `
+  -Headers @{ Authorization = "Bearer TU_TOKEN_DE_PRUEBA" } `
+  -ContentType "application/json" -Body $body
 ```
 
 **Respuesta esperada:**
@@ -172,6 +201,7 @@ Copy-Item .env.example .env
 | `MODELO` | Modelo de lenguaje por defecto (`gemini-3.5-flash-lite`). |
 | `REDIS_URL` | URL de Redis (opcional; si no hay servidor, se usa memoria RAM). |
 | `CACHE_TTL_SEGUNDOS` | Tiempo de vida del caché en segundos. |
+| `API_TOKEN` | Token de acceso para `POST /chat` (cabecera `Authorization: Bearer <API_TOKEN>`). |
 | `TELEGRAM_TOKEN` | Token del bot de Telegram (obtenido de @BotFather). |
 | `TELEGRAM_SECRET` | Secreto para validar webhooks de Telegram (definido por ti). |
 | `PUBLIC_URL` | URL pública del servicio (obligatoria en Heroku para el webhook). |
@@ -270,9 +300,20 @@ Copia la URL pública que te dé ngrok (ej. `https://abc123.ngrok-free.app`) y a
 
 - Los tokens y secretos **nunca** se escriben en el código fuente, prompts, registros ni Git.
 - El archivo `.env` está en `.gitignore`.
+- El endpoint `/chat` rechaza solicitudes sin un `Authorization: Bearer <API_TOKEN>` válido (HTTP 401).
 - El endpoint `/telegram` rechaza solicitudes sin el encabezado `X-Telegram-Bot-Api-Secret-Token` válido (HTTP 401).
 - Los datos de duelo y contacto son sensibles; el agente no los almacena permanentemente sin consentimiento explícito.
 - No se exponen mensajes de error internos ni trazas al cliente externo.
+
+---
+
+## 10.b Límites conocidos
+
+- Sin `GOOGLE_API_KEY`, el agente responde en **modo simulación** (aviso explícito `[modo simulación]`).
+- El caché de contexto usa memoria RAM si no hay `REDIS_URL`; se pierde al reiniciar el proceso.
+- `/chat` no conserva el historial entre peticiones (cada llamada es independiente).
+- Si el proveedor del modelo falla, el endpoint responde `500` y lo registra en el log.
+- El token de acceso y el secreto de Telegram deben estar en el entorno; una `API_TOKEN` ausente responde `503` (no configurado).
 
 ---
 
